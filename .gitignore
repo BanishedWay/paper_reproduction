@@ -1,2 +1,5 @@
 # 不上传csv文件
 **/*.csv
+
+# 不上传__pycache__文件夹
+**/__pycache__/

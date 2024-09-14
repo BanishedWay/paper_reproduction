@@ -1,58 +1,37 @@
 import pandas as pd
-import numpy as np
-
+from utils.basic_funcs import outlier_detect, one_hot_encode, normalize
 
 # 加载数据集
-filename = "./BEGAN/data.csv"
+dir_name = "./Data/UNSW15"
 
-data = pd.read_csv(filename)
+train_data = pd.read_csv(dir_name + "/UNSW_NB15_training-set.csv")
+test_data = pd.read_csv(dir_name + "/UNSW_NB15_testing-set.csv")
 
+combine_data = pd.concat([train_data, test_data])
+
+# 删去id、label列
+combine_data.drop("id", axis=1, inplace=True)
+combine_data.drop("label", axis=1, inplace=True)
 
 # 离群值分析
-def outlier_detect(data, threshold=10):
-    outliers = pd.DataFrame()
-    for col in data.select_dtypes(include=[np.number]).columns:
-        Q1 = data[col].quantile(0.25)
-        Q3 = data[col].quantile(0.75)
-        IQR = Q3 - Q1
-        lower_bound = Q1 - threshold * IQR
-        upper_bound = Q3 + threshold * IQR
-        col_outliers = data[(data[col] < lower_bound) | (data[col] > upper_bound)]
-        outliers = pd.concat([outliers, col_outliers])
-    return outliers
+combine_data = outlier_detect(combine_data)
 
-
-outliers = outlier_detect(data)
-# 删除离群值
-data = data.drop(outliers.index)
-data = data.dropna()
-
-
-# 单次编码
-def one_hot_encode(data, column):
-    dummies = pd.get_dummies(data[column], prefix=column)
-    data = pd.concat([data, dummies], axis=1)
-    data = data.drop(column, axis=1, inplace=True)
-    return data
-
-
+# one-hot编码
 categorical_columns = ["proto", "service", "state"]
-
 for column in categorical_columns:
-    data = one_hot_encode(data, column)
+    combine_data = one_hot_encode(combine_data, column)
 
+# 将attack_cat列暂存
+tmp = combine_data["attack_cat"]
+combine_data.drop("attack_cat", axis=1, inplace=True)
 
-# 特征缩放
-def feature_scaling(data):
-    for column in data.select_dtypes(include=np.number).columns:
-        min_value = data[column].min()
-        max_value = data[column].max()
-        data[column] = (data[column] - min_value) / (max_value - min_value)
-    return data
+# 数据归一化
+combine_data = normalize(combine_data)
 
+# 将bool型数据转换为int型，其余类型不变
+for column in combine_data.columns:
+    if combine_data[column].dtype == "bool":
+        combine_data[column] = combine_data[column].astype(int)
 
-data = feature_scaling(data)
-
-# 将data转为numpy数组
-data = data.to_numpy()
-print(data)
+# 将attack_cat转为class名称
+combine_data["class"] = tmp
