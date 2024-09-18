@@ -36,6 +36,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 from Generator import Generator
 from Discriminator import Discriminator
 
+# TODO 查明如何将数据处理为float
 num = 0
 
 gen_list = []
@@ -63,7 +64,7 @@ for i, cat in enumerate(attack_categories):
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=True)
 
     batch_size = 64
-    num_epochs = 150
+    num_epochs = 1
     display_step = 25
 
     num = num + 1
@@ -79,7 +80,7 @@ for i, cat in enumerate(attack_categories):
 
             discriminator_optimizer.zero_grad()
             d_real = discriminator(real_features)
-            d_fake = discriminator(fake_data)
+            d_fake = discriminator(fake_data.detach())
             # print(real_label)
             loss_real = criterion(d_real, real_label)
             loss_fake = criterion(d_fake, fake_label)
@@ -87,14 +88,9 @@ for i, cat in enumerate(attack_categories):
             loss_d.backward()
             discriminator_optimizer.step()
 
-            z = Variable(torch.randn(real_features.size(0), input_dim))
-            fake_data = generator(
-                z
-            )  # TODO 这里不能重新生成，应该用上面的fake_data，但是生成会直接报错
-
+            generator_optimizer.zero_grad()
             d_fake = discriminator(fake_data)
             loss_g = criterion(d_fake, real_label)
-            generator_optimizer.zero_grad()
             loss_g.backward()
             generator_optimizer.step()
 
@@ -106,7 +102,7 @@ for i, cat in enumerate(attack_categories):
         fake_data = generator(z)
         fake_data = fake_data.numpy()
 
-        fake_data[:, :-1] = cat
+        # fake_data[:, :-1] = cat
         gen_list.append(fake_data)
 
 print(gen_list)
